@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valentina's Shop & Aisha Oriflame | Tienda Oficial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #fdf8fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .brand-gradient { background: linear-gradient(135deg, #b83b5e 0%, #e06388 100%); }
+  </style>
+</head>
+<body class="text-gray-800">
+
+  <!-- HEADER -->
+  <header class="bg-white shadow-sm sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div>
+        <span class="text-xs uppercase tracking-widest text-pink-600 font-bold">✦ Belleza · Moda · Oriflame</span>
+        <h1 id="storeName" class="text-xl md:text-2xl font-extrabold text-gray-900">Valentina's Shop & Aisha Oriflame</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://www.tiktok.com/@valentinasshop9" target="_blank" class="text-xs bg-gray-900 text-white px-3 py-2 rounded-full font-semibold hover:opacity-90">TikTok</a>
+        <a href="https://www.facebook.com/AishaOriflames/" target="_blank" class="text-xs bg-blue-600 text-white px-3 py-2 rounded-full font-semibold hover:opacity-90">Facebook</a>
+        <button onclick="abrirCarrito()" class="relative brand-gradient text-white px-4 py-2 rounded-full font-bold text-sm shadow">
+          🛒 Carrito (<span id="cartCount">0</span>)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- FILTRO DE CATEGORÍAS -->
+  <section class="max-w-6xl mx-auto px-4 pt-6">
+    <div id="categoriasBar" class="flex gap-2 overflow-x-auto pb-2"></div>
+  </section>
+
+  <!-- CATÁLOGO DE PRODUCTOS -->
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <div id="loader" class="text-center py-16 text-pink-700 font-semibold">Cargando catálogo desde Google Sheets...</div>
+    <div id="catalogoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+  </main>
+
+  <!-- MODAL DEL CARRITO Y CHECKOUT -->
+  <div id="modalCheckout" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3 mb-4">
+        <h2 class="text-lg font-bold text-pink-700">Tu Pedido</h2>
+        <button onclick="cerrarCarrito()" class="text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
+      </div>
+
+      <!-- PASO 1: CARRITO Y DATOS -->
+      <div id="stepDatos">
+        <div id="listaCarrito" class="space-y-3 mb-4"></div>
+
+        <!-- Cupón -->
+        <div class="flex gap-2 mb-4">
+          <input id="inputCupon" type="text" placeholder="Código promocional (ej. TIKTOK10)" class="border rounded-lg px-3 py-2 text-sm flex-1 uppercase" />
+          <button onclick="aplicarCupon()" class="bg-pink-100 text-pink-700 font-bold px-4 py-2 rounded-lg text-sm hover:bg-pink-200">Aplicar</button>
+        </div>
+        <p id="msgCupon" class="text-xs mb-3"></p>
+
+        <!-- Datos del cliente -->
+        <div class="space-y-3 border-t pt-4">
+          <h3 class="font-bold text-sm text-gray-700">Tus Datos de Contacto</h3>
+          <input id="cliNombre" type="text" placeholder="Nombre completo *" class="w-full border rounded-lg px-3 py-2 text-sm" />
+          <input id="cliCorreo" type="email" placeholder="Correo electrónico (para tu confirmación) *" class="w-full border rounded-lg px-3 py-2 text-sm" />
+          <input id="cliTelefono" type="tel" placeholder="WhatsApp / Teléfono *" class="w-full border rounded-lg px-3 py-2 text-sm" />
+          
+          <h3 class="font-bold text-sm text-gray-700 pt-2">¿Cómo deseas recibir tu pedido?</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="cambiarEntrega('DELIVERY')" id="btnDelivery" class="border-2 border-pink-600 bg-pink-50 text-pink-700 rounded-lg py-2 text-xs font-bold">🚚 Delivery / Agencia</button>
+            <button type="button" onclick="cambiarEntrega('RECOJO')" id="btnRecojo" class="border rounded-lg py-2 text-xs font-bold text-gray-600">🏪 Coordinar Recojo</button>
+          </div>
+          <input id="cliDireccion" type="text" placeholder="Dirección exacta o Agencia (Shalom / Olva) *" class="w-full border rounded-lg px-3 py-2 text-sm" />
+          <p id="infoRecojo" class="text-xs text-gray-500 hidden"></p>
+        </div>
+
+        <!-- Resumen de costos -->
+        <div class="bg-pink-50/70 rounded-xl p-4 my-4 text-sm space-y-1">
+          <div class="flex justify-between"><span>Subtotal:</span><span id="txtSubtotal">S/ 0.00</span></div>
+          <div class="flex justify-between text-green-600"><span>Descuento:</span><span id="txtDescuento">- S/ 0.00</span></div>
+          <div class="flex justify-between"><span>Envío:</span><span id="txtDelivery">S/ 0.00</span></div>
+          <div class="flex justify-between font-extrabold text-base text-pink-700 border-t pt-2"><span>Total a Pagar:</span><span id="txtTotal">S/ 0.00</span></div>
+        </div>
+
+        <button onclick="irAPago()" class="w-full brand-gradient text-white py-3 rounded-xl font-bold shadow hover:opacity-95">Continuar al Pago con Yape / Plin →</button>
+      </div>
+
+      <!-- PASO 2: PAGO YAPE/PLIN Y VALIDACIÓN CON IA -->
+      <div id="stepPago" class="hidden space-y-4">
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="seleccionarMetodo('YAPE')" id="tabYape" class="py-2 rounded-lg font-bold text-sm bg-purple-700 text-white">Pagar con Yape</button>
+          <button onclick="seleccionarMetodo('PLIN')" id="tabPlin" class="py-2 rounded-lg font-bold text-sm bg-gray-100 text-gray-700">Pagar con Plin</button>
+        </div>
+
+        <div class="text-center border rounded-xl p-4 bg-gray-50">
+          <p class="text-xs text-gray-500 mb-1">Escanea el QR o envía al número:</p>
+          <p id="pagoNumero" class="text-lg font-extrabold text-gray-900">914 099 496</p>
+          <p id="pagoTitular" class="text-xs text-gray-600 mb-3">Titular: Valentina's Shop</p>
+          <img id="pagoQR" src="" alt="QR de pago" class="w-44 h-44 mx-auto rounded-lg border bg-white p-2 shadow-sm" />
+          <p class="mt-3 text-sm font-bold text-pink-700">Monto exacto a enviar: <span id="montoExactoPago">S/ 0.00</span></p>
+        </div>
+
+        <div class="border-t pt-3">
+          <label class="block text-xs font-bold text-gray-700 mb-1">📸 Sube la captura de tu comprobante Yape/Plin:</label>
+          <p class="text-[11px] text-gray-500 mb-2">Nuestra Inteligencia Artificial verificará automáticamente el monto y la operación.</p>
+          <input id="fileComprobante" type="file" accept="image/*" class="w-full text-xs border rounded-lg p-2" />
+        </div>
+
+        <div class="flex gap-2">
+          <button onclick="volverADatos()" class="w-1/3 border py-3 rounded-xl text-sm font-bold text-gray-600">← Volver</button>
+          <button id="btnConfirmarPago" onclick="enviarPedido()" class="w-2/3 brand-gradient text-white py-3 rounded-xl text-sm font-bold shadow">Verificar Pago y Confirmar</button>
+        </div>
+      </div>
+
+      <!-- PASO 3: CONFIRMACIÓN EXITOSA -->
+      <div id="stepExito" class="hidden text-center py-6 space-y-4">
+        <div class="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">✓</div>
+        <h3 class="text-xl font-extrabold text-gray-900">¡Pedido Confirmado!</h3>
+        <p class="text-sm text-gray-600">Hemos validado tu pago y enviado los detalles a tu correo electrónico.</p>
+        <div class="bg-pink-50 p-4 rounded-xl text-sm space-y-1">
+          <p><strong>Código de Pedido:</strong> <span id="exitoIdPedido" class="text-pink-700 font-bold"></span></p>
+          <div id="boxCuponRegalo" class="hidden pt-2 text-xs text-green-700 font-semibold">
+            🎁 Cupón para tu próxima compra: <span id="exitoCupon" class="underline font-bold"></span>
+          </div>
+        </div>
+        <a id="btnWhatsappFinal" href="#" target="_blank" class="block w-full bg-green-600 text-white py-3 rounded-xl font-bold text-sm">📲 Enviar constancia a nuestro WhatsApp</a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTÓN FLOTANTE DE WHATSAPP (+51 914 099 496) -->
+  <a href="https://wa.me/51914099496?text=Hola%20Valentina's%20Shop%20/%20Aisha%20Oriflame,%20tengo%20una%20consulta" target="_blank" class="fixed bottom-5 right-5 bg-green-500 text-white px-4 py-3 rounded-full shadow-lg font-bold text-sm flex items-center gap-2 z-30 hover:bg-green-600">
+    💬 WhatsApp
+  </a>
+
+  <script>
+    // =========================================================================
+    // PEGA AQUÍ LA URL DE TU GOOGLE APPS SCRIPT (/exec)
+    // =========================================================================
+    const SCRIPT_URL = "AKfycbwu7Pd05OeBDWYmpueMr3BFq0pvtaXFlmajVy_ZhTDk3SpIIaAJ9dfyUDZa-zVxgiC6";
+
+    let catalogo = [];
+    let config = {};
+    let carrito = [];
+    let porcentajeDescuento = 0;
+    let codigoCuponAplicado = "";
+    let tipoEntrega = "DELIVERY";
+    let metodoPagoActual = "YAPE";
+
+    async function cargarTienda() {
+      try {
+        const res = await fetch(SCRIPT_URL);
+        const data = await res.json();
+        if (data.ok) {
+          catalogo = data.productos;
+          config = data.config;
+          document.getElementById("storeName").textContent = config.NOMBRE_TIENDA || "Valentina's Shop & Aisha Oriflame";
+          document.getElementById("infoRecojo").textContent = config.DIRECCION_RECOJO || "";
+          renderCategorias();
+          renderProductos(catalogo);
+        }
+      } catch (e) {
+        document.getElementById("loader").textContent = "Configura tu SCRIPT_URL en el archivo index.html para ver los productos.";
+      }
+    }
+
+    function renderCategorias() {
+      const cats = ["Todos", ...new Set(catalogo.map(p => p.Categoria))];
+      const bar = document.getElementById("categoriasBar");
+      bar.innerHTML = cats.map(c => `
+        <button onclick="filtrarCat('${c}')" class="px-4 py-1.5 rounded-full bg-white border text-xs font-bold text-gray-700 hover:border-pink-500 hover:text-pink-600 whitespace-nowrap">${c}</button>
+      `).join("");
+    }
+
+    function filtrarCat(cat) {
+      if (cat === "Todos") renderProductos(catalogo);
+      else renderProductos(catalogo.filter(p => p.Categoria === cat));
+    }
+
+    function renderProductos(lista) {
+      document.getElementById("loader").classList.add("hidden");
+      const grid = document.getElementById("catalogoGrid");
+      grid.innerHTML = lista.map(p => {
+        const tieneVariantes = p.variantes && p.variantes.length > 0;
+        const selectorVariantes = tieneVariantes ? `
+          <select id="var_${p.ID}" onchange="actualizarPrecioCard('${p.ID}')" class="w-full border rounded-lg p-1.5 text-xs mt-2 bg-gray-50">
+            ${p.variantes.map(v => `<option value="${v.ID_Variante}" data-precio="${v.Precio}" data-stock="${v.Stock}" data-valor="${v.Valor}">${v.Atributo}:${v.Valor} - S/ ${Number(v.Precio).toFixed(2)} (${v.Stock} disp.)</option>`).join("")}
+          </select>
+        ` : `<p class="text-[11px] text-gray-400 mt-2">Stock disponible: ${p.Stock}</p>`;
+
+        const precioInicial = tieneVariantes ? Number(p.variantes[0].Precio).toFixed(2) : Number(p.Precio).toFixed(2);
+
+        return `
+          <div class="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden flex flex-col justify-between p-4">
+            <div>
+              <img src="${p.Imagen_URL}" alt="${p.Nombre}" class="w-full h-48 object-cover rounded-xl mb-3" />
+              <span class="text-[10px] uppercase tracking-wider bg-pink-50 text-pink-700 px-2 py-0.5 rounded font-bold">${p.Categoria}</span>
+              <h3 class="font-bold text-gray-900 mt-1 text-sm">${p.Nombre}</h3>
+              <p class="text-xs text-gray-500 mt-1 line-clamp-2">${p.Descripcion}</p>
+              ${selectorVariantes}
+            </div>
+            <div class="mt-4 pt-3 border-t flex items-center justify-between">
+              <span id="precio_${p.ID}" class="text-lg font-extrabold text-pink-700">S/ ${precioInicial}</span>
+              <button onclick="agregarAlCarrito('${p.ID}')" class="brand-gradient text-white text-xs font-bold px-4 py-2 rounded-xl shadow hover:opacity-90">+ Agregar</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function actualizarPrecioCard(idProd) {
+      const sel = document.getElementById(`var_${idProd}`);
+      const opt = sel.options[sel.selectedIndex];
+      document.getElementById(`precio_${idProd}`).textContent = `S/ ${Number(opt.dataset.precio).toFixed(2)}`;
+    }
+
+    function agregarAlCarrito(idProd) {
+      const prod = catalogo.find(p => p.ID === idProd);
+      const sel = document.getElementById(`var_${idProd}`);
+      let idVariante = null, nombreVariante = "", precio = Number(prod.Precio), stockMax = Number(prod.Stock);
+
+      if (sel) {
+        const opt = sel.options[sel.selectedIndex];
+        idVariante = opt.value;
+        nombreVariante = opt.dataset.valor;
+        precio = Number(opt.dataset.precio);
+        stockMax = Number(opt.dataset.stock);
+      }
+
+      const key = idVariante ? `${idProd}_${idVariante}` : idProd;
+      const itemExistente = carrito.find(i => i.key === key);
+
+      if (itemExistente) {
+        if (itemExistente.cantidad + 1 > stockMax) {
+          alert(`Solo quedan ${stockMax} unidades disponibles de esta opción.`);
+          return;
+        }
+        itemExistente.cantidad++;
+      } else {
+        if (stockMax < 1) { alert("Producto sin stock"); return; }
+        carrito.push({ key, idProducto: idProd, idVariante, nombre: prod.Nombre, nombreVariante, precio, cantidad: 1, stockMax });
+      }
+      document.getElementById("cartCount").textContent = carrito.reduce((a, b) => a + b.cantidad, 0);
+    }
+
+    function abrirCarrito() {
+      if (carrito.length === 0) { alert("Tu carrito está vacío"); return; }
+      document.getElementById("modalCheckout").classList.remove("hidden");
+      document.getElementById("modalCheckout").classList.add("flex");
+      renderResumenCarrito();
+    }
+
+    function cerrarCarrito() {
+      document.getElementById("modalCheckout").classList.add("hidden");
+      document.getElementById("modalCheckout").classList.remove("flex");
+    }
+
+    function renderResumenCarrito() {
+      const cont = document.getElementById("listaCarrito");
+      cont.innerHTML = carrito.map((item, idx) => `
+        <div class="flex justify-between items-center border-b pb-2 text-xs">
+          <div>
+            <p class="font-bold text-gray-800">${item.nombre} ${item.nombreVariante ? `(${item.nombreVariante})` : ""}</p>
+            <p class="text-gray-500">S/ ${item.precio.toFixed(2)} x ${item.cantidad}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold">S/ ${(item.precio * item.cantidad).toFixed(2)}</span>
+            <button onclick="eliminarItem(${idx})" class="text-red-500 font-bold">✕</button>
+          </div>
+        </div>
+      `).join("");
+
+      const subtotal = carrito.reduce((a, b) => a + (b.precio * b.cantidad), 0);
+      const descuento = +(subtotal * (porcentajeDescuento / 100)).toFixed(2);
+      const envio = tipoEntrega === "DELIVERY" ? Number(config.COSTO_DELIVERY || 0) : 0;
+      const total = +(subtotal - descuento + envio).toFixed(2);
+
+      document.getElementById("txtSubtotal").textContent = `S/ ${subtotal.toFixed(2)}`;
+      document.getElementById("txtDescuento").textContent = `- S/ ${descuento.toFixed(2)}`;
+      document.getElementById("txtDelivery").textContent = `S/ ${envio.toFixed(2)}`;
+      document.getElementById("txtTotal").textContent = `S/ ${total.toFixed(2)}`;
+      document.getElementById("montoExactoPago").textContent = `S/ ${total.toFixed(2)}`;
+    }
+
+    function eliminarItem(idx) {
+      carrito.splice(idx, 1);
+      document.getElementById("cartCount").textContent = carrito.reduce((a, b) => a + b.cantidad, 0);
+      if (carrito.length === 0) cerrarCarrito();
+      else renderResumenCarrito();
+    }
+
+    function cambiarEntrega(tipo) {
+      tipoEntrega = tipo;
+      document.getElementById("cliDireccion").classList.toggle("hidden", tipo === "RECOJO");
+      document.getElementById("infoRecojo").classList.toggle("hidden", tipo === "DELIVERY");
+      renderResumenCarrito();
+    }
+
+    async function aplicarCupon() {
+      const codigo = document.getElementById("inputCupon").value.trim();
+      if (!codigo) return;
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ accion: "validar_cupon", codigo })
+      });
+      const data = await res.json();
+      const msg = document.getElementById("msgCupon");
+      if (data.valido) {
+        porcentajeDescuento = data.porcentaje;
+        codigoCuponAplicado = codigo;
+        msg.textContent = `✓ Cupón aplicado: ${data.porcentaje}% de descuento`;
+        msg.className = "text-xs mb-3 text-green-600 font-bold";
+      } else {
+        porcentajeDescuento = 0;
+        codigoCuponAplicado = "";
+        msg.textContent = data.mensaje || "Cupón no válido";
+        msg.className = "text-xs mb-3 text-red-500 font-bold";
+      }
+      renderResumenCarrito();
+    }
+
+    function irAPago() {
+      const nombre = document.getElementById("cliNombre").value.trim();
+      const correo = document.getElementById("cliCorreo").value.trim();
+      const telefono = document.getElementById("cliTelefono").value.trim();
+      if (!nombre || !correo || !telefono) {
+        alert("Por favor completa tu nombre, correo y teléfono.");
+        return;
+      }
+      document.getElementById("stepDatos").classList.add("hidden");
+      document.getElementById("stepPago").classList.remove("hidden");
+      seleccionarMetodo("YAPE");
+    }
+
+    function volverADatos() {
+      document.getElementById("stepPago").classList.add("hidden");
+      document.getElementById("stepDatos").classList.remove("hidden");
+    }
+
+    function seleccionarMetodo(metodo) {
+      metodoPagoActual = metodo;
+      if (metodo === "YAPE") {
+        document.getElementById("pagoNumero").textContent = config.YAPE_NUMERO;
+        document.getElementById("pagoTitular").textContent = "Titular: " + config.YAPE_TITULAR;
+        document.getElementById("pagoQR").src = config.YAPE_QR;
+      } else {
+        document.getElementById("pagoNumero").textContent = config.PLIN_NUMERO;
+        document.getElementById("pagoTitular").textContent = "Titular: " + config.PLIN_TITULAR;
+        document.getElementById("pagoQR").src = config.PLIN_QR;
+      }
+    }
+
+    function fileABase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function enviarPedido() {
+      const fileInput = document.getElementById("fileComprobante");
+      if (!fileInput.files.length) {
+        alert("Sube la captura de tu comprobante Yape o Plin.");
+        return;
+      }
+      const btn = document.getElementById("btnConfirmarPago");
+      btn.disabled = true;
+      btn.textContent = "Validando comprobante con IA...";
+
+      try {
+        const file = fileInput.files[0];
+        const base64 = await fileABase64(file);
+
+        const payload = {
+          accion: "confirmar_pedido",
+          carrito: carrito,
+          cupon: codigoCuponAplicado,
+          metodoPago: metodoPagoActual,
+          comprobanteBase64: base64,
+          mimeType: file.type,
+          cliente: {
+            nombre: document.getElementById("cliNombre").value.trim(),
+            correo: document.getElementById("cliCorreo").value.trim(),
+            telefono: document.getElementById("cliTelefono").value.trim(),
+            tipoEntrega: tipoEntrega,
+            direccion: document.getElementById("cliDireccion").value.trim()
+          }
+        };
+
+        const res = await fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          document.getElementById("stepPago").classList.add("hidden");
+          document.getElementById("stepExito").classList.remove("hidden");
+          document.getElementById("exitoIdPedido").textContent = data.idPedido;
+          if (data.cuponRegalo) {
+            document.getElementById("boxCuponRegalo").classList.remove("hidden");
+            document.getElementById("exitoCupon").textContent = data.cuponRegalo;
+          }
+          const textoWa = encodeURIComponent(`¡Hola! Acabo de realizar el pedido *${data.idPedido}* (${data.resumen}) por S/ ${Number(data.totalPagado).toFixed(2)}.`);
+          document.getElementById("btnWhatsappFinal").href = `https://wa.me/${config.WHATSAPP}?text=${textoWa}`;
+          carrito = [];
+          document.getElementById("cartCount").textContent = "0";
+        } else {
+          alert("Atención: " + data.error);
+        }
+      } catch (err) {
+        alert("Ocurrió un error al validar el pedido.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Verificar Pago y Confirmar";
+      }
+    }
+
+    cargarTienda();
+  </script>
+</body>
+</html>
